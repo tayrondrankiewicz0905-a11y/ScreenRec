@@ -1,0 +1,80 @@
+name: Build ScreenRec DMG
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ScreenRec
+    runs-on: macos-15
+
+    steps:
+      - name: Repository herunterladen
+        uses: actions/checkout@v4
+
+      - name: Swift Version prüfen
+        run: |
+          sw_vers
+          xcodebuild -version
+          swift --version
+
+      - name: Build Script ausführbar machen
+        run: chmod +x build.command
+
+      - name: ScreenRec bauen
+        run: ./build.command
+
+      - name: App prüfen
+        run: |
+          test -d "ScreenRec.app"
+          test -f "ScreenRec.app/Contents/MacOS/ScreenRec"
+          test -f "ScreenRec.app/Contents/Info.plist"
+
+          echo "✅ ScreenRec.app wurde erfolgreich erstellt"
+
+      - name: DMG erstellen
+        run: |
+          rm -rf dmg
+          mkdir -p dmg
+
+          cp -R "ScreenRec.app" "dmg/"
+
+          ln -s /Applications "dmg/Applications"
+
+          hdiutil create \
+            -volname "ScreenRec" \
+            -srcfolder "dmg" \
+            -ov \
+            -format UDZO \
+            "ScreenRec.dmg"
+
+      - name: DMG prüfen
+        run: |
+          test -f "ScreenRec.dmg"
+
+          echo "✅ ScreenRec.dmg wurde erfolgreich erstellt"
+          ls -lh "ScreenRec.dmg"
+
+          hdiutil imageinfo "ScreenRec.dmg"
+
+      - name: DMG als Artifact hochladen
+        uses: actions/upload-artifact@v4
+        with:
+          name: ScreenRec-DMG
+          path: ScreenRec.dmg
+          if-no-files-found: error
+
+      - name: GitHub Release erstellen
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ScreenRec.dmg
+          generate_release_notes: true

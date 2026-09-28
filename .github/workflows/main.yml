@@ -6,9 +6,8 @@ on:
   push:
     branches:
       - main
-
-  tags:
-    - "v*"
+    tags:
+      - "v*"
 
 permissions:
   contents: write
@@ -20,19 +19,10 @@ jobs:
 
     steps:
 
-      # --------------------------------------------------
-      # 1. Repository
-      # --------------------------------------------------
-
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-
-      # --------------------------------------------------
-      # 2. Apple / Swift Umgebung prüfen
-      # --------------------------------------------------
-
-      - name: Check macOS and Swift
+      - name: Check Apple Environment
         run: |
           echo "===== macOS ====="
           sw_vers
@@ -49,12 +39,7 @@ jobs:
           echo "===== Swift ====="
           swift --version
 
-
-      # --------------------------------------------------
-      # 3. Projektstruktur prüfen
-      # --------------------------------------------------
-
-      - name: Check Project Files
+      - name: Check Project
         run: |
           echo "===== Repository ====="
           find . -maxdepth 4 -type f | sort
@@ -66,44 +51,29 @@ jobs:
           test -f Resources/Info.plist
           test -d Sources/ScreenRec
 
-          echo "✅ Package.swift gefunden"
-          echo "✅ Info.plist gefunden"
-          echo "✅ Sources/ScreenRec gefunden"
-
-
-      # --------------------------------------------------
-      # 4. Swift Package prüfen
-      # --------------------------------------------------
+          echo "Package.swift OK"
+          echo "Info.plist OK"
+          echo "Sources/ScreenRec OK"
 
       - name: Resolve Swift Package
         run: |
           swift package resolve
 
-
-      # --------------------------------------------------
-      # 5. Swift Build
-      # --------------------------------------------------
-
-      - name: Build Swift Application
+      - name: Build ScreenRec
         run: |
-          swift build \
-            -c release
+          swift build -c release
 
           echo ""
           echo "===== Build Output ====="
+
           ls -lh .build/release/
 
           test -f .build/release/ScreenRec
 
           echo ""
-          echo "✅ ScreenRec wurde erfolgreich kompiliert"
+          echo "ScreenRec erfolgreich kompiliert"
 
-
-      # --------------------------------------------------
-      # 6. macOS App Bundle erstellen
-      # --------------------------------------------------
-
-      - name: Create macOS App
+      - name: Create App Bundle
         run: |
           APP="ScreenRec.app"
 
@@ -112,33 +82,36 @@ jobs:
           mkdir -p "$APP/Contents/MacOS"
           mkdir -p "$APP/Contents/Resources"
 
-          cp ".build/release/ScreenRec" \
-             "$APP/Contents/MacOS/ScreenRec"
+          cp \
+            ".build/release/ScreenRec" \
+            "$APP/Contents/MacOS/ScreenRec"
 
-          cp "Resources/Info.plist" \
-             "$APP/Contents/Info.plist"
+          cp \
+            "Resources/Info.plist" \
+            "$APP/Contents/Info.plist"
 
           chmod +x \
             "$APP/Contents/MacOS/ScreenRec"
 
-          echo "===== App Bundle ====="
+          echo ""
+          echo "===== App Structure ====="
+
           find "$APP" -maxdepth 4 -type f | sort
 
           echo ""
           echo "===== Info.plist ====="
-          plutil -p "$APP/Contents/Info.plist"
+
+          plutil -p \
+            "$APP/Contents/Info.plist"
 
           echo ""
-          echo "===== Mach-O ====="
-          file "$APP/Contents/MacOS/ScreenRec"
+          echo "===== Binary ====="
+
+          file \
+            "$APP/Contents/MacOS/ScreenRec"
 
           echo ""
-          echo "✅ ScreenRec.app erstellt"
-
-
-      # --------------------------------------------------
-      # 7. App signieren
-      # --------------------------------------------------
+          echo "ScreenRec.app erstellt"
 
       - name: Sign Application
         run: |
@@ -148,6 +121,7 @@ jobs:
             --sign - \
             "ScreenRec.app"
 
+          echo ""
           echo "===== Code Signature ====="
 
           codesign \
@@ -157,12 +131,7 @@ jobs:
             "ScreenRec.app"
 
           echo ""
-          echo "✅ ScreenRec.app erfolgreich signiert"
-
-
-      # --------------------------------------------------
-      # 8. App Bundle erneut prüfen
-      # --------------------------------------------------
+          echo "ScreenRec.app erfolgreich signiert"
 
       - name: Verify Application
         run: |
@@ -170,15 +139,14 @@ jobs:
           test -d "ScreenRec.app/Contents"
           test -d "ScreenRec.app/Contents/MacOS"
 
-          test -f "ScreenRec.app/Contents/MacOS/ScreenRec"
-          test -f "ScreenRec.app/Contents/Info.plist"
+          test -f \
+            "ScreenRec.app/Contents/MacOS/ScreenRec"
 
-          echo "✅ App Bundle ist vollständig"
+          test -f \
+            "ScreenRec.app/Contents/Info.plist"
 
-
-      # --------------------------------------------------
-      # 9. DMG vorbereiten
-      # --------------------------------------------------
+          echo ""
+          echo "App Bundle ist vollständig"
 
       - name: Prepare DMG
         run: |
@@ -194,13 +162,10 @@ jobs:
             /Applications \
             "dmg/Applications"
 
+          echo ""
           echo "===== DMG Contents ====="
+
           ls -la dmg
-
-
-      # --------------------------------------------------
-      # 10. DMG erstellen
-      # --------------------------------------------------
 
       - name: Create DMG
         run: |
@@ -213,49 +178,43 @@ jobs:
             -format UDZO \
             "ScreenRec.dmg"
 
-          test -f "ScreenRec.dmg"
+          test -f ScreenRec.dmg
 
           echo ""
           echo "===== DMG ====="
-          ls -lh "ScreenRec.dmg"
+
+          ls -lh ScreenRec.dmg
 
           echo ""
-          echo "✅ ScreenRec.dmg erfolgreich erstellt"
-
-
-      # --------------------------------------------------
-      # 11. DMG prüfen
-      # --------------------------------------------------
+          echo "ScreenRec.dmg erfolgreich erstellt"
 
       - name: Verify DMG
         run: |
-          hdiutil imageinfo "ScreenRec.dmg"
+          echo "===== DMG INFO ====="
+
+          hdiutil imageinfo ScreenRec.dmg
 
           echo ""
-          echo "===== DMG File ====="
-          file "ScreenRec.dmg"
+          echo "===== FILE ====="
 
-          test -s "ScreenRec.dmg"
+          file ScreenRec.dmg
 
           echo ""
-          echo "✅ DMG ist gültig"
+          echo "===== SIZE ====="
 
+          ls -lh ScreenRec.dmg
 
-      # --------------------------------------------------
-      # 12. DMG als GitHub Artifact hochladen
-      # --------------------------------------------------
+          test -s ScreenRec.dmg
 
-      - name: Upload DMG
+          echo ""
+          echo "DMG ist gültig"
+
+      - name: Upload DMG Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ScreenRec-DMG
           path: ScreenRec.dmg
           if-no-files-found: error
-
-
-      # --------------------------------------------------
-      # 13. GitHub Release bei v1.0.0 usw.
-      # --------------------------------------------------
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
